@@ -41,6 +41,8 @@ my $object_types = $object_types_dict->{entries};
     }
     print OUT ");\n";
 
+    print OUT "1;\n";
+
     print OUT "\n=head1 NAME\n";
     print OUT "\nWebService::TypePad::Noun - Container for noun classes\n";
     print OUT "\n=head1 SYNOPSIS\n";
@@ -71,6 +73,7 @@ my $object_types = $object_types_dict->{entries};
     print OUT "package WebService::TypePad::Object;\n";
     print OUT "use strict;\n";
     print OUT "use warnings;\n";
+    print OUT "use fields qw(last_known_etag data);\n";
 
     print OUT "our %Object_Types = (\n";
     foreach my $object_type (@$object_types) {
@@ -80,6 +83,22 @@ my $object_types = $object_types_dict->{entries};
 	print OUT "    '$accessor_name' => 'WebService::TypePad::Object::$class_name',\n";
     }
     print OUT ");\n";
+
+    print OUT "sub new {\n";
+    print OUT "    my (\$class, \%params) = \@_;\n";
+    print OUT "    my \$self = fields::new(\$class);\n";
+    print OUT "    \$self->\$key(\$params{key}) foreach my \$key (\%params);\n";
+    print OUT "}\n";
+    print OUT "sub _from_json_dictionary {\n";
+    print OUT "    my (\$class, \$dict) = \@_;\n";
+    print OUT "    my \$self = \$class->new();\n";
+    print OUT "    \$self->{data} = \$dict;\n";
+    print OUT "}\n";
+    print OUT "sub _as_json_dictionary {\n";
+    print OUT "    return \$_[0]->{data};\n";
+    print OUT "}\n";
+
+    print OUT "1;\n";
 
     print OUT "\n=head1 NAME\n";
     print OUT "\nWebService::TypePad::Object - Base class for our local representations of TypePad's object types\n";
@@ -98,6 +117,161 @@ my $object_types = $object_types_dict->{entries};
     print OUT "\n=back\n";
 
     close(OUT);
+}
+
+# Create a package for each object type
+{
+
+    foreach my $object_type (@$object_types) {
+	my $type_name = $object_type->{name};
+	my $class_name = class_for_object_type($type_name);
+
+	my $fn = "lib/WebService/TypePad/Object/$class_name.pm";
+	local *OUT;
+	open(OUT, '>', $fn);
+
+	print OUT "package WebService::TypePad::Object::$class_name;\n";
+	print OUT "use strict;\n";
+	print OUT "use warnings;\n";
+	print OUT "use SixApart::TypePad::Util::Coerce;\n";
+
+	if (my $base_type_name = $object_type->{parentType}) {
+	    my $parent_class_name = class_for_object_type($base_type_name);
+	    print OUT "use base qw(WebService::TypePad::Object::$parent_class_name);\n";
+	}
+	else {
+	    print OUT "use base qw(WebService::TypePad::Object);\n";
+	}
+
+	print OUT "\n";
+
+	foreach my $property (@{$object_type->{properties}}) {
+	    my $property_name = $property->{name};
+	    my $accessor_name = accessor_for_property($property_name);
+	    my $type = $property->{type};
+
+	    # Entirely lowercase means primitive type
+	    my $is_primitive = ($type =~ /^[a-z]+$/);
+
+	    print OUT "sub $accessor_name {\n";
+	    print OUT "    my \$self = shift\n";
+	    print OUT "    if (\@_) {\n";
+
+
+	    # Generate setter code
+	    {
+		my $coerce_function_name = undef;
+		my $coerce_function_modifier = undef;
+
+		if ($type =~ /^(\w+)<(\w+)>$/) {
+		    my $generic_type = $1;
+		    my $inner_type = $2;
+		    $coerce_function_modifier = 'coerce_'.$inner_type.'_in';
+		   
+		    if ($generic_type eq 'List') {
+			$coerce_function_name = 'coerce_list_in';
+		    }
+		    elsif ($generic_type eq 'array') {
+			$coerce_function_name = 'coerce_array_in';
+		    }
+		    elsif ($generic_type eq 'set') {
+			# We only actually have special handling for sets of string.
+			# For other kinds of sets we just return a list and let the caller deal with it.
+			if ($inner_type eq 'string') {
+			    $coerce_function_name = 'coerce_set_in';
+			}
+			else {
+			    $coerce_function_name = 'coerce_list_in';
+			}
+		    }
+		    elsif ($generic_type eq 'map') {
+			$coerce_function_name = 'coerce_map_in';
+		    }
+		    else {
+			die "I don't know how to coerce values of this new generic type $generic_type in type $type";
+		    }
+		}
+		elsif ($type =~ /^(\w+)$/) {
+		    $coerce_function_name = 'coerce_'.$type.'_in';
+		}
+		else {
+		    die "I don't know how to coerce values of this new type $type";
+		}
+
+		print OUT "        \$self->{data}{$property_name} = SixApart::TypePad::Util::Coerce::$coerce_function_name(\$_[1]". ($coerce_function_modifier ? ", \\\&SixApart::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
+		print OUT "        return \$_[1];\n";
+	    }
+
+	    print OUT "    }\n";
+	    print OUT "    else {\n";
+
+	    # Generate getter code
+	    {
+
+		my $coerce_function_name = undef;
+		my $coerce_function_modifier = undef;
+
+		if ($is_primitive) {
+		    if ($type eq 'boolean') {
+			$coerce_function_name = 'coerce_boolean_out';
+		    }
+		}
+		else {
+		    if ($type =~ /^(\w+)<(\w+)>$/) {
+			my $generic_type = $1;
+			my $inner_type = $2;
+			my $inner_is_primitive = ($inner_type =~ /^[a-z]+$/);
+			$coerce_function_modifier = 'coerce_'.$inner_type.'_out' unless $inner_is_primitive || $inner_type eq 'boolean';
+			
+			if ($generic_type eq 'List') {
+			    $coerce_function_name = 'coerce_list_out';
+			}
+			elsif ($generic_type eq 'array') {
+			    $coerce_function_name = 'coerce_array_out';
+			}
+			elsif ($generic_type eq 'set') {
+			    # We only actually have special handling for sets of string.
+			    # For other kinds of sets we just return a list and let the caller deal with it.
+			    if ($inner_type eq 'string') {
+				$coerce_function_name = 'coerce_set_out';
+			    }
+			    else {
+				$coerce_function_name = 'coerce_list_out';
+			    }
+			}
+			elsif ($generic_type eq 'map') {
+			    $coerce_function_name = 'coerce_map_out';
+			}
+			else {
+			    die "I don't know how to coerce values of this new generic type $generic_type in type $type";
+			}
+		    }
+		    elsif ($type =~ /^\w+$/) {
+			$coerce_function_name = 'coerce_'.$type.'_out';
+		    }
+		    else {
+			die "I don't know how to coerce values of this new type $type";
+		    }
+		}
+
+		if ($coerce_function_name) {
+		    print OUT "        return SixApart::TypePad::Util::Coerce::$coerce_function_name(\$self->{data}{$property_name}". ($coerce_function_modifier ? ", \\\&SixApart::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
+		}
+		else {
+		    print OUT "        return \$self->{data}{$property_name};\n";
+		}
+	    }
+
+	    print OUT "    }\n";
+	    print OUT "}\n\n";
+	}
+
+	print OUT "1;\n";
+
+	close(OUT);
+
+    }
+
 }
 
 sub load_json_file {
@@ -131,6 +305,12 @@ sub accessor_for_object_type {
 sub class_for_object_type {
     # No change necessary
     return $_[0];
+}
+
+sub accessor_for_property {
+    my ($type_name) = @_;
+    $type_name =~ s/(\w)([A-Z])/$1."_".$2/ge;
+    return lc($type_name);
 }
 
 =head1 USAGE
