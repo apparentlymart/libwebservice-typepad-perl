@@ -7,6 +7,7 @@ WebService::TypePad - Interface to the Six Apart TypePad API
 
 package WebService::TypePad;
 
+use 5.006;
 use vars qw($VERSION);
 $VERSION = '0.01';
 
