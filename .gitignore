@@ -1,0 +1,7 @@
+lib/WebService/TypePad/Noun.pm
+lib/WebService/TypePad/Object.pm
+lib/WebService/TypePad/Noun
+lib/WebService/TypePad/Object
+lib/WebService/TypePad/Noun/*
+lib/WebService/TypePad/Object/*
+
