@@ -86,17 +86,26 @@ my %noun_for_object_type = ();
 	my $type_name = $object_type->{name};
 	my $accessor_name = accessor_for_object_type($type_name);
 	my $class_name = class_for_object_type($type_name);
-	print OUT "    '$accessor_name' => 'WebService::TypePad::Object::$class_name',\n";
+	my $atom_id = "tag:api.typepad.com,2009:".$type_name;
+	print OUT "    '$atom_id' => 'WebService::TypePad::Object::$class_name',\n";
     }
     print OUT ");\n";
 
     print OUT "sub new {\n";
     print OUT "    my (\$class, \%params) = \@_;\n";
     print OUT "    my \$self = fields::new(\$class);\n";
+    print OUT "    \$self->{data} = {};\n";
     print OUT "    \$self->\$key(\$params{key}) foreach my \$key (\%params);\n";
     print OUT "}\n";
     print OUT "sub _from_json_dictionary {\n";
     print OUT "    my (\$class, \$dict) = \@_;\n";
+    print OUT "    if (my \$object_types = \$dict->{objectTypes}) {\n";
+    print OUT "        foreach my \$type_uri (\@\$object_types) {\n";
+    print OUT "            if (my \$type_name = \$Object_Types{\$type_uri}) {\n";
+    print OUT "                \$class = 'TypePad::API::Object::'.\$type_name;\n";
+    print OUT "            }\n";
+    print OUT "        }\n";
+    print OUT "    }\n";
     print OUT "    my \$self = \$class->new();\n";
     print OUT "    \$self->{data} = \$dict;\n";
     print OUT "}\n";
