@@ -351,6 +351,89 @@ my %noun_for_object_type = ();
 
 }
 
+# Create a package for each noun
+{
+
+    foreach my $noun (@$nouns) {
+	my $noun_name = $noun->{name};
+	my $class_name = class_for_noun($noun_name);
+
+	my $fn = "lib/WebService/TypePad/Noun/$class_name.pm";
+	local *OUT;
+	open(OUT, '>', $fn);
+
+	print OUT "package WebService::TypePad::Noun::$class_name;\n";
+	print OUT "use strict;\n";
+	print OUT "use warnings;\n";
+	print OUT "use Carp qw(croak);\n";
+	print OUT "use WebService::TypePad::Util::Coerce;\n";
+	print OUT "use WebService::TypePad::Task;\n";
+
+	print OUT "\n";
+
+	my %prefix_for_http_method = (
+	    'GET' => 'get_',
+	    'PUT' => 'put_',
+	    'POST' => 'post_to_',
+	    'DELETE' => 'delete_',
+	    # TODO: Add OPTIONS here?
+	);
+
+	my $make_noun_methods = sub {
+	    my ($noun) = @_;
+
+	    my $resource_object_type = $noun->{resourceObjectType};
+	    # Can't auto-generate methods for nouns that don't follow the
+	    # Data API conventions, such as BatchProcessor and BrowserUpload.
+	    return unless $resource_object_type;
+
+	    # Right now only interested in generating methods for nouns that
+	    # can have id, since they all can except the weird ones.
+	    return unless $noun->{canHaveId};
+
+	    my $resource_noun = accessor_for_object_type($resource_object_type->{name});
+	    my $method_base_name = $resource_noun;
+
+	    foreach my $http_method (keys %{$noun->{supportedMethods}}) {
+		my $prefix = $prefix_for_http_method{$http_method};
+		next unless $prefix;
+
+		my $method_name = join('', $prefix, $method_base_name);
+		my $id_param = $resource_noun."_id";
+
+		print OUT "sub ${method_name}_task {\n";
+		print OUT "    my (\$self, \%params) = \@_;\n";
+		print OUT "    my \$id = delete \$params{$id_param};\n";
+		print OUT "    my \$obj = delete \$params{$resource_noun};\n";
+		print OUT "    croak \"Invalid params: \".join(',', keys(\%params)) if %params;\n";
+		print OUT "    croak \"Can't provide both $id_param and $resource_noun parameters\" if defined(\$id) && defined(\$obj);\n";
+		print OUT "    \$id = \$obj->url_id unless defined(\$id);\n";
+		print OUT "}\n\n";
+	    }
+
+	};
+
+	my $make_action_methods = sub {
+	    my ($noun, $action) = @_;
+	};
+
+	my $make_property_methods = sub {
+	    my ($noun, $property) = @_;
+	};
+
+	my $make_filter_methods = sub {
+	    my ($noun, $property, @filters) = @_;
+	};
+
+
+	$make_noun_methods->($noun);
+
+	print OUT "1;\n";
+
+	close(OUT);
+    }
+}
+
 sub load_json_file {
     my ($fn) = @_;
 
