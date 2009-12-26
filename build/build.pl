@@ -21,6 +21,8 @@ my $object_types_dict = load_json_file("object-types.json");
 my $nouns = $nouns_dict->{entries};
 my $object_types = $object_types_dict->{entries};
 
+my %noun_for_object_type = ();
+
 # Create WebService::TypePad::Noun package
 {
 
@@ -38,6 +40,10 @@ my $object_types = $object_types_dict->{entries};
 	my $accessor_name = accessor_for_noun($noun_name);
 	my $class_name = class_for_noun($noun_name);
 	print OUT "    '$accessor_name' => 'WebService::TypePad::Noun::$class_name',\n";
+
+	if (my $object_type = $noun->{resourceObjectType}) {
+	    $noun_for_object_type{$object_type->{name}} = $noun_name;
+	}
     }
     print OUT ");\n";
 
@@ -125,6 +131,7 @@ my $object_types = $object_types_dict->{entries};
     foreach my $object_type (@$object_types) {
 	my $type_name = $object_type->{name};
 	my $class_name = class_for_object_type($type_name);
+	my $accessor_name = accessor_for_object_type($type_name);
 
 	my $fn = "lib/WebService/TypePad/Object/$class_name.pm";
 	local *OUT;
@@ -268,6 +275,67 @@ my $object_types = $object_types_dict->{entries};
 
 	print OUT "1;\n";
 
+	# Now generate some POD
+
+	print OUT "\n=head1 NAME\n";
+	print OUT "\nWebService::TypePad::Object::$class_name - Perl representation of TypePad's $class_name object type\n";
+	print OUT "\n=head1 SYNOPSIS\n";
+	print OUT "\n    use WebService::TypePad::Object::$class_name;\n";
+	print OUT "    my \$$accessor_name = WebService::TypePad::Object::$class_name->new();\n";
+	print OUT "\n=head1 DESCRIPTION\n";
+	print OUT "\nThis is a Perl representation of TypePad's $class_name object type.\n";
+	print OUT "For more information about this type and its parameters, see L<the documentation on TypePad's developer site|http://www.typepad.com/services/apidocs/objecttypes/$class_name>.\n";
+	if (my $base_type_name = $object_type->{parentType}) {
+	    print OUT "\nThis is a subtype of L<$base_type_name|WebService::TypePad::Object::$base_type_name>.\n" if $base_type_name ne 'Base';
+	}
+	print OUT "\n=head1 PROPERTIES\n";
+	print OUT "\nEach of these properties has an accessor method which will retrieve the property's value when called with no arguments or set the property's value when called with one argument.\n";
+
+	my $type_accessor_name = $accessor_name;
+	foreach my $property (sort {$a->{name} cmp $b->{name}} @{$object_type->{properties}}) {
+	    my $property_name = $property->{name};
+	    my $accessor_name = accessor_for_property($property_name);
+	    my $type = $property->{type};
+	    my $doc_string = typepad_pod_to_real_pod($property->{docString});
+
+	    my $type_as_pod;
+
+	    if ($type =~ /^[a-z]+$/) {
+		$type_as_pod = "a single C<$type> value";
+	    }
+	    elsif ($type =~ /^(\w+)<(\w+)>$/) {
+		my $generic_type = $1;
+		my $inner_type = $2;
+		$generic_type = 'array' if $generic_type eq 'set' && $inner_type ne 'string';
+		my $article = $generic_type eq 'array' ? 'an' : 'a';
+		if ($inner_type =~ /^[a-z]+$/) {
+		    $type_as_pod = "$article $generic_type of C<$inner_type> values";
+		}
+		else {
+		    $type_as_pod = "$article $generic_type of L<$inner_type|WebService::TypePad::Object::$inner_type> objects";
+		}
+	    }
+	    else {
+		$type_as_pod = "a single L<$type|WebService::TypePad::Object::$type> object";
+	    }
+
+	    print OUT "\n=head2 \$$type_accessor_name->$accessor_name\n";
+	    print OUT "\n$doc_string\n";
+	    print OUT "\nReturns $type_as_pod.\n";
+	
+	    
+	}
+
+	print OUT "\n=head1 SEE ALSO\n";
+	print OUT "\n=over 1\n";
+	if (my $noun_name = $noun_for_object_type{$type_name}) {
+	    my $noun_class = class_for_noun($noun_name);
+	    print OUT "\n=item * L<WebService::TypePad::Noun::$noun_class>\n";
+	}
+	print OUT "\n=item * L<http://www.typepad.com/services/apidocs/objecttypes/$type_name>\n";
+	print OUT "\n=back\n";
+
+
 	close(OUT);
 
     }
@@ -311,6 +379,16 @@ sub accessor_for_property {
     my ($type_name) = @_;
     $type_name =~ s/(\w)([A-Z])/$1."_".$2/ge;
     return lc($type_name);
+}
+
+sub typepad_pod_to_real_pod {
+    my ($str) = @_;
+
+    $str =~ s/T<(.*?)>/B<$1.>/g;
+    $str =~ s/L<(.*?)\|(.*?)>/$2/g;
+    $str =~ s/O<(\w+)>/L<$1|WebService::TypePad::Object::$1>/g;
+
+    return $str;
 }
 
 =head1 USAGE
