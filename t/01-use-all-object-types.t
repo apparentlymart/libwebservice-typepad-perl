@@ -3,8 +3,8 @@ use WebService::TypePad::Object;
 
 my @classes_to_try = ();
 
-foreach my $type_uri (keys %WebService::TypePad::Object::Object_Types) {
-    my $class = $WebService::TypePad::Object::Object_Types{$type_uri};
+foreach my $type (keys %WebService::TypePad::Object::Object_Types) {
+    my $class = $WebService::TypePad::Object::Object_Types{$type};
     push @classes_to_try, $class;
 }
 

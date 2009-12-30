@@ -86,8 +86,15 @@ my %noun_for_object_type = ();
         my $type_name = $object_type->{name};
         my $accessor_name = accessor_for_object_type($type_name);
         my $class_name = class_for_object_type($type_name);
-        my $atom_id = "tag:api.typepad.com,2009:".$type_name;
-        print OUT "    '$atom_id' => 'WebService::TypePad::Object::$class_name',\n";
+        print OUT "    '$type_name' => 'WebService::TypePad::Object::$class_name',\n";
+    }
+    print OUT ");\n";
+    print OUT "our %Object_Type_Classes_By_Uri = (\n";
+    foreach my $object_type (@$object_types) {
+        my $type_name = $object_type->{name};
+        my $accessor_name = accessor_for_object_type($type_name);
+        my $class_name = class_for_object_type($type_name);
+        print OUT "    'tag:api.typepad.com,2009:$type_name' => 'WebService::TypePad::Object::$class_name',\n";
     }
     print OUT ");\n";
 
@@ -96,18 +103,20 @@ my %noun_for_object_type = ();
     print OUT "    my \$self = fields::new(\$class);\n";
     print OUT "    \$self->{data} = {};\n";
     print OUT "    map { \$self->\$_(\$params{\$_}) } keys \%params;\n";
+    print OUT "    return \$self;";
     print OUT "}\n";
     print OUT "sub _from_json_dictionary {\n";
     print OUT "    my (\$class, \$dict) = \@_;\n";
     print OUT "    if (my \$object_types = \$dict->{objectTypes}) {\n";
     print OUT "        foreach my \$type_uri (\@\$object_types) {\n";
-    print OUT "            if (my \$type_name = \$Object_Types{\$type_uri}) {\n";
-    print OUT "                \$class = 'TypePad::API::Object::'.\$type_name;\n";
+    print OUT "            if (my \$class_name = \$Object_Type_Classes_By_Uri{\$type_uri}) {\n";
+    print OUT "                \$class = \$class_name;\n";
     print OUT "            }\n";
     print OUT "        }\n";
     print OUT "    }\n";
     print OUT "    my \$self = \$class->new();\n";
     print OUT "    \$self->{data} = \$dict;\n";
+    print OUT "    return \$self;";
     print OUT "}\n";
     print OUT "sub _as_json_dictionary {\n";
     print OUT "    return \$_[0]->{data};\n";
@@ -214,8 +223,8 @@ my %noun_for_object_type = ();
                     die "I don't know how to coerce values of this new type $type";
                 }
 
-                print OUT "        \$self->{data}{$property_name} = WebService::TypePad::Util::Coerce::$coerce_function_name(\$_[1]". ($coerce_function_modifier ? ", \\\&WebService::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
-                print OUT "        return \$_[1];\n";
+                print OUT "        \$self->{data}{$property_name} = WebService::TypePad::Util::Coerce::$coerce_function_name(\$_[0]". ($coerce_function_modifier ? ", \\\&WebService::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
+                print OUT "        return \$_[0];\n";
             }
 
             print OUT "    }\n";
