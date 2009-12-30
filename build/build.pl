@@ -95,7 +95,7 @@ my %noun_for_object_type = ();
     print OUT "    my (\$class, \%params) = \@_;\n";
     print OUT "    my \$self = fields::new(\$class);\n";
     print OUT "    \$self->{data} = {};\n";
-    print OUT "    \$self->\$key(\$params{key}) foreach my \$key (\%params);\n";
+    print OUT "    map { \$self->\$_(\$params{\$_}) } keys \%params;\n";
     print OUT "}\n";
     print OUT "sub _from_json_dictionary {\n";
     print OUT "    my (\$class, \$dict) = \@_;\n";
@@ -149,7 +149,7 @@ my %noun_for_object_type = ();
 	print OUT "package WebService::TypePad::Object::$class_name;\n";
 	print OUT "use strict;\n";
 	print OUT "use warnings;\n";
-	print OUT "use SixApart::TypePad::Util::Coerce;\n";
+	print OUT "use WebService::TypePad::Util::Coerce;\n";
 
 	if (my $base_type_name = $object_type->{parentType}) {
 	    my $parent_class_name = class_for_object_type($base_type_name);
@@ -170,7 +170,7 @@ my %noun_for_object_type = ();
 	    my $is_primitive = ($type =~ /^[a-z]+$/);
 
 	    print OUT "sub $accessor_name {\n";
-	    print OUT "    my \$self = shift\n";
+	    print OUT "    my \$self = shift;\n";
 	    print OUT "    if (\@_) {\n";
 
 
@@ -214,7 +214,7 @@ my %noun_for_object_type = ();
 		    die "I don't know how to coerce values of this new type $type";
 		}
 
-		print OUT "        \$self->{data}{$property_name} = SixApart::TypePad::Util::Coerce::$coerce_function_name(\$_[1]". ($coerce_function_modifier ? ", \\\&SixApart::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
+		print OUT "        \$self->{data}{$property_name} = WebService::TypePad::Util::Coerce::$coerce_function_name(\$_[1]". ($coerce_function_modifier ? ", \\\&WebService::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
 		print OUT "        return \$_[1];\n";
 	    }
 
@@ -271,7 +271,7 @@ my %noun_for_object_type = ();
 		}
 
 		if ($coerce_function_name) {
-		    print OUT "        return SixApart::TypePad::Util::Coerce::$coerce_function_name(\$self->{data}{$property_name}". ($coerce_function_modifier ? ", \\\&SixApart::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
+		    print OUT "        return WebService::TypePad::Util::Coerce::$coerce_function_name(\$self->{data}{$property_name}". ($coerce_function_modifier ? ", \\\&WebService::TypePad::Util::Coerce::$coerce_function_modifier" : "") . ");\n";
 		}
 		else {
 		    print OUT "        return \$self->{data}{$property_name};\n";
