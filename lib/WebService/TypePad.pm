@@ -15,7 +15,7 @@ use strict;
 use warnings;
 use Carp;
 use WebService::TypePad::Request;
-use WebService::TypePad::List;
+#use WebService::TypePad::List;
 
 =head1 SYNOPSIS
 
@@ -35,17 +35,6 @@ containing named tasks and then running the request to obtain a map of task name
 to result.
 
 =head1 METHODS
-
-=cut
-
-__PACKAGE__->_make_type_accessors(
-    user => 'WebService::TypePad::User',
-    group => 'WebService::TypePad::Group',
-    asset => 'WebService::TypePad::Asset',
-    event => 'WebService::TypePad::Event',
-    relationship => 'WebService::TypePad::Relationship',
-    application => 'WebService::TypePad::Application',
-);
 
 =head2 WebService::TypePad->new(%opts)
 
@@ -105,39 +94,14 @@ sub new {
 
     unless ($self->{backend_url}) {
 	if ($self->authenticated) {
-	    $self->{backend_url} = 'http://api.typepad.com/';
+	    $self->{backend_url} = 'https://api.typepad.com/';
 	}
 	else {
-	    $self->{backend_url} = 'https://api.typepad.com/';
+	    $self->{backend_url} = 'http://api.typepad.com/';
 	}
     }
 
     return $self;
-}
-
-# Create the methods that provide access to bound instances of
-# our object classes.
-sub _make_type_accessors {
-    my ($class, %types) = @_;
-
-    # We're going to start messing with the symbol table.
-    no strict 'refs';
-
-    foreach my $type_method_name (keys %types) {
-        my $type_class = $types{$type_method_name};
-
-        eval "use $type_class; 1;" or die "Failed to load $type_class: $@";
-
-        *{"${class}::${type_method_name}"} = sub {
-            my ($self, $url_id) = @_;
-            return $type_class->new_skeleton_by_url_id($url_id);
-        };
-
-        *{"${class}::new_${type_method_name}"} = sub {
-            my ($self, @args) = @_;
-            return $type_class->new(@args);
-        };
-    }
 }
 
 sub backend_url {

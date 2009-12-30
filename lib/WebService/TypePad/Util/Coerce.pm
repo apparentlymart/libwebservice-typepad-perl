@@ -103,6 +103,8 @@ sub coerce_set_out {
         my $out_func = sub {
             my ($dict) = @_;
             return undef unless defined($dict);
+            eval "use $class;";
+            die "Failed to load package $class: $@" if $@;
             return $class->_from_json_dictionary($dict);
         };
 

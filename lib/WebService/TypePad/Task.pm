@@ -1,11 +1,11 @@
 
 =head1 NAME
 
-WebService::SixApart::TypePad::Task - Represents a single task as a member of a batch request.
+WebService::TypePad::Task - Represents a single task as a member of a batch request.
 
 =head1 DESCRIPTION
 
-Instances of this class are used with L<WebService::SixApart::TypePad::Request> to describe
+Instances of this class are used with L<WebService::TypePad::Request> to describe
 an atomic sub-request in a batch request.
 
 Users of this library shouldn't create objects of this class directly. Instead, use the
@@ -13,7 +13,7 @@ task factory methods provided by the various remote object classes.
 
 =cut
 
-package WebService::SixApart::TypePad::Task;
+package WebService::TypePad::Task;
 
 use strict;
 use warnings;

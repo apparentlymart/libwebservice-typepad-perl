@@ -126,7 +126,7 @@ sub _task_to_http_request {
     # an additional field to Task to determine whether the request should
     # be authed and perhaps whether it should auth as the group or the user.
 
-    my $url = $self->{api}->url() . join('/', @{$task->path_chunks}) . '.json';
+    my $url = $self->{api}->backend_url() . join('/', @{$task->path_chunks}) . '.json';
     my $method = $task->method;
 
     my $req = HTTP::Request->new($method => $url);

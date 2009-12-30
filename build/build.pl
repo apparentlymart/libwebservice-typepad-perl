@@ -261,7 +261,7 @@ my %noun_for_object_type = ();
                                 $coerce_function_name = 'coerce_set_out';
                             }
                             else {
-                                $coerce_function_name = 'coerce_list_out';
+                                $coerce_function_name = 'coerce_array_out';
                             }
                         }
                         elsif ($generic_type eq 'map') {
