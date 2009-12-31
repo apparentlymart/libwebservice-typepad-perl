@@ -1,0 +1,12 @@
+# This file is used by build/build.pl to build the real MANIFEST, which is not under version control
+lib/WebService/TypePad.pm
+lib/WebService/TypePad/Request.pm
+lib/WebService/TypePad/Task.pm
+lib/WebService/TypePad/Auth.pm
+lib/WebService/TypePad/Util/Coerce.pm
+lib/WebService/TypePad/Util/JSON.pm
+t/00-use.t
+t/01-use-all-object-types.t
+t/02-all-coerce-functions-defined.t
+t/03-coerce.t
+Makefile.PL

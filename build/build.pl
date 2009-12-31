@@ -22,6 +22,7 @@ my $nouns = $nouns_dict->{entries};
 my $object_types = $object_types_dict->{entries};
 
 my %noun_for_object_type = ();
+my @generated_files = ();
 
 # Create WebService::TypePad::Noun package
 {
@@ -29,6 +30,7 @@ my %noun_for_object_type = ();
     mkdir("lib/WebService/TypePad/Noun");
     local *OUT;
     open(OUT, '>', "lib/WebService/TypePad/Noun.pm");
+    push @generated_files, "lib/WebService/TypePad/Noun.pm";
 
     print OUT "package WebService::TypePad::Noun;\n";
     print OUT "use strict;\n";
@@ -75,6 +77,7 @@ my %noun_for_object_type = ();
     mkdir("lib/WebService/TypePad/Object");
     local *OUT;
     open(OUT, '>', "lib/WebService/TypePad/Object.pm");
+    push @generated_files, "lib/WebService/TypePad/Object.pm";
 
     print OUT "package WebService::TypePad::Object;\n";
     print OUT "use strict;\n";
@@ -152,6 +155,7 @@ my %noun_for_object_type = ();
         my $accessor_name = accessor_for_object_type($type_name);
 
         my $fn = "lib/WebService/TypePad/Object/$class_name.pm";
+        push @generated_files, "lib/WebService/TypePad/Object/$class_name.pm";
         local *OUT;
         open(OUT, '>', $fn);
 
@@ -367,6 +371,7 @@ my %noun_for_object_type = ();
         my $class_name = class_for_noun($noun_name);
 
         my $fn = "lib/WebService/TypePad/Noun/$class_name.pm";
+        push @generated_files, "lib/WebService/TypePad/Noun/$class_name.pm";
         local *OUT;
         open(OUT, '>', $fn);
 
@@ -562,6 +567,24 @@ my %noun_for_object_type = ();
 
         close(OUT);
     }
+}
+
+# Generate MANIFEST
+{
+    local *OUT;
+    local *IN;
+    open(OUT, '>', 'MANIFEST');
+    push @generated_files, 'MANIFEST';
+
+    open(IN, '<', 'MANIFEST.base');
+    print OUT grep { $_ !~ /^#/ } <IN>;
+    close(IN);
+
+    foreach my $fn (@generated_files) {
+        print OUT $fn, "\n";
+    }
+
+    close(OUT);
 }
 
 sub load_json_file {
