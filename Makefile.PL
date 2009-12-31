@@ -16,11 +16,12 @@ WriteMakefile1(
     AUTHOR => 'Martin Atkins <matkins@sixapart.com>',
     PREREQ_PM => {
         LWP::UserAgent => 0,
-        LWP::Parallel::UserAgent => 0,
         URI => 0,
         JSON::Any => 1.17,
         HTTP::Request => 0,
         HTTP::Request::Multi => 0,
+        Set::Tiny => 0,
+        Try::Tiny => 0,
     },
 );
 

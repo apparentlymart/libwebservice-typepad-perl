@@ -9,7 +9,7 @@ package WebService::TypePad;
 
 use 5.006;
 use vars qw($VERSION);
-$VERSION = '0.01';
+$VERSION = '0.01_01';
 
 use strict;
 use warnings;
