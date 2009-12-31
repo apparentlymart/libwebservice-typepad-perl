@@ -448,8 +448,15 @@ my %noun_for_object_type = ();
 
             my $method_base_name;
 
+            my @params = ($noun_resource_param_name);
+            my @path_chunks = ("'".$noun_name."'", '$'.$noun_resource_param_name.'_param');
+
             if (@filters) {
                 # Filter-y name
+
+                my $property_name = $sub_resource->{name};
+                push @path_chunks, "'".$property_name."'";
+                $property_name =~ y/-/_/;
 
                 my @simple_filters = ();
                 my @param_filters = ();
@@ -462,14 +469,14 @@ my %noun_for_object_type = ();
                     if ($filter->{parameterized}) {
                         # Trim off the by- prefix
                         push @param_filters, substr($filter_method_name, 3);
+                        push @params, $filter_method_name;
+                        push @path_chunks, "'\@".$filter_name."'", '$'.$filter_method_name.'_param';
                     }
                     else {
+                        push @path_chunks, "'\@".$filter_name."'";
                         push @simple_filters, $filter_method_name;
                     }
                 }
-
-                my $property_name = $sub_resource->{name};
-                $property_name =~ y/-/_/;
 
                 $method_base_name = join('_',
                     $noun_resource_param_name,
@@ -486,6 +493,7 @@ my %noun_for_object_type = ();
             elsif ($sub_resource) {
                 # /users/<id>/memberships becomes user_memberships
                 my $property_name = $sub_resource->{name};
+                push @path_chunks, "'".$property_name."'";
                 $property_name =~ y/-/_/;
                 $method_base_name = join('_', $noun_resource_param_name, $property_name);
             }
@@ -505,16 +513,16 @@ my %noun_for_object_type = ();
                 if ($http_method eq 'GET') {
                     print OUT "sub ${method_name}_task {\n";
                     print OUT "    my (\$self, \%params) = \@_;\n";
-                    print OUT "    my \$id = delete \$params{$id_param_name};\n";
+                    foreach my $param_name (@params) {
+                        print OUT "    my \$${param_name}_param = delete \$params{$param_name};\n";
+                    }
                     print OUT "    my \$obj = delete \$params{$noun_resource_param_name};\n";
                     print OUT "    croak \"Invalid params: \".join(',', keys(\%params)) if %params;\n";
-                    print OUT "    croak \"Can't provide both $id_param_name and $noun_resource_param_name parameters\" if defined(\$id) && defined(\$obj);\n";
-                    print OUT "    \$id = \$obj->url_id unless defined(\$id);\n";
                     print OUT "    return WebService::TypePad::Task->new(\n";
-                    print OUT "        path_chunks => [ '$noun_name', \$id ],\n";
+                    print OUT "        path_chunks => [ ".join(', ', @path_chunks)." ],\n";
                     print OUT "        result_handler => sub {\n";
                     print OUT "            my (\$dict) = \@_;\n";
-                    print OUT "            return WebService::TypePad::Util::Coerce::coerce_${noun_resource_object_type_name}_out(\$dict);\n";
+                    print OUT "            return ".coerce_call('$dict', $endpoint_resource_object_type_name, 'out').";\n";
                     print OUT "        },\n";
                     print OUT "    );\n";
                     print OUT "}\n\n";
@@ -603,6 +611,21 @@ sub typepad_pod_to_real_pod {
     $str =~ s/O<(\w+)>/L<$1|WebService::TypePad::Object::$1>/g;
 
     return $str;
+}
+
+sub coerce_call {
+    my ($expr, $type, $direction) = @_;
+
+    if ($type =~ /^(\w+)<(\w+)>$/) {
+        my $collection_type = lc($1);
+        my $inner_type = $2;
+
+        return "WebService::TypePad::Util::Coerce::coerce_".$collection_type."_".$direction."(".$expr.", \\&WebService::TypePad::Util::Coerce::coerce_".$inner_type."_".$direction.")";
+    }
+    else {
+        return "WebService::TypePad::Util::Coerce::coerce_".$type."_".$direction."(".$expr.")";
+    }
+
 }
 
 =head1 USAGE
