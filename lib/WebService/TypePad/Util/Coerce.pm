@@ -74,7 +74,7 @@ sub coerce_set_in {
 }
 
 sub coerce_set_out {
-    my ($list, $inner_coerce);
+    my ($list, $inner_coerce) = @_;
 
     return undef unless defined($list);
 
