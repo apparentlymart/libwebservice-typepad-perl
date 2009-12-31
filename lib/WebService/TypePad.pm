@@ -93,12 +93,12 @@ sub new {
     croak "Unsupported argument(s): ".join(', ', keys %opts) if %opts;
 
     unless ($self->{backend_url}) {
-	if ($self->authenticated) {
-	    $self->{backend_url} = 'https://api.typepad.com/';
-	}
-	else {
-	    $self->{backend_url} = 'http://api.typepad.com/';
-	}
+        if ($self->authenticated) {
+            $self->{backend_url} = 'https://api.typepad.com/';
+        }
+        else {
+            $self->{backend_url} = 'http://api.typepad.com/';
+        }
     }
 
     return $self;
