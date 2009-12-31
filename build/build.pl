@@ -379,6 +379,17 @@ my %noun_for_object_type = ();
 
         print OUT "\n";
 
+        print OUT "sub _new_for_client {\n";
+        print OUT "    my (\$class, \$typepad) = \@_;\n";
+        print OUT "    my \$self = bless [ \$typepad ], \$class;\n";
+        print OUT "    return \$self;\n";
+        print OUT "}\n";
+        print OUT "sub client {\n";
+        print OUT "    return \$_[0][0];\n";
+        print OUT "}\n";
+
+        print OUT "\n";
+
         my %prefix_for_http_method = (
             'GET' => 'get_',
             'PUT' => 'put_',
@@ -387,13 +398,38 @@ my %noun_for_object_type = ();
             # TODO: Add OPTIONS here?
         );
 
+        my $make_single_request_shorthand = sub {
+            my ($method_name) = @_;
+
+            print OUT "sub $method_name {\n";
+            print OUT "    my (\$self, \%params) = \@_;\n";
+
+            print OUT "    my \$task = \$self->${method_name}_task(\%params);\n";
+            print OUT "    my \$request = \$self->client->new_request();\n";
+            print OUT "    \$request->add_task('', \$task);\n";
+            print OUT "    my \$result = \$request->run();\n";
+            print OUT "    my \$response = \$result->{''};\n";
+            print OUT "    if (UNIVERSAL::isa(\$response, 'HTTP::Response')) {\n";
+            print OUT "        die \$response;\n";
+            print OUT "    }\n";
+            print OUT "    else {\n";
+            print OUT "        return \$response;\n";
+            print OUT "    }\n";
+
+            print OUT "}\n\n";
+        };
+
         my $make_noun_methods = sub {
             my ($noun) = @_;
+
+            my $noun_name = $noun->{name};
 
             my $resource_object_type = $noun->{resourceObjectType};
             # Can't auto-generate methods for nouns that don't follow the
             # Data API conventions, such as BatchProcessor and BrowserUpload.
             return unless $resource_object_type;
+
+            my $resource_object_type_name = $resource_object_type->{name};
 
             # Right now only interested in generating methods for nouns that
             # can have id, since they all can except the weird ones.
@@ -409,14 +445,24 @@ my %noun_for_object_type = ();
                 my $method_name = join('', $prefix, $method_base_name);
                 my $id_param = $resource_noun."_id";
 
-                print OUT "sub ${method_name}_task {\n";
-                print OUT "    my (\$self, \%params) = \@_;\n";
-                print OUT "    my \$id = delete \$params{$id_param};\n";
-                print OUT "    my \$obj = delete \$params{$resource_noun};\n";
-                print OUT "    croak \"Invalid params: \".join(',', keys(\%params)) if %params;\n";
-                print OUT "    croak \"Can't provide both $id_param and $resource_noun parameters\" if defined(\$id) && defined(\$obj);\n";
-                print OUT "    \$id = \$obj->url_id unless defined(\$id);\n";
-                print OUT "}\n\n";
+                if ($http_method eq 'GET') {
+                    print OUT "sub ${method_name}_task {\n";
+                    print OUT "    my (\$self, \%params) = \@_;\n";
+                    print OUT "    my \$id = delete \$params{$id_param};\n";
+                    print OUT "    my \$obj = delete \$params{$resource_noun};\n";
+                    print OUT "    croak \"Invalid params: \".join(',', keys(\%params)) if %params;\n";
+                    print OUT "    croak \"Can't provide both $id_param and $resource_noun parameters\" if defined(\$id) && defined(\$obj);\n";
+                    print OUT "    \$id = \$obj->url_id unless defined(\$id);\n";
+                    print OUT "    return WebService::TypePad::Task->new(\n";
+                    print OUT "        path_chunks => [ '$noun_name', \$id ],\n";
+                    print OUT "        result_handler => sub {\n";
+                    print OUT "            my (\$dict) = \@_;\n";
+                    print OUT "            return WebService::TypePad::Util::Coerce::coerce_${resource_object_type_name}_out(\$dict);\n";
+                    print OUT "        },\n";
+                    print OUT "    );\n";
+                    print OUT "}\n\n";
+                    $make_single_request_shorthand->($method_name);
+                }
             }
 
         };
