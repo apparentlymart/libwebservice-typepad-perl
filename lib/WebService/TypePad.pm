@@ -15,24 +15,14 @@ use strict;
 use warnings;
 use Carp;
 use WebService::TypePad::Request;
+use WebService::TypePad::Noun;
 #use WebService::TypePad::List;
 
 =head1 SYNOPSIS
 
     my $typepad = WebService::TypePad->new();
-    my $req = $typepad->new_request();
-    $req->add_task(user => $typepad->user('melody')->load_task());
-    $req->add_task(memberships => $typepad->user('melody')->load_memberships_task());
-    my $results = $req->run();
-    my $user = $results->{user};
-    my $memberships = $results->{memberships};
-
-=head1 REQUEST MODEL
-
-To reduce overhead, the TypePad API supports batch requests. This library is designed
-around this concept, so requests are made by building up a batch request object
-containing named tasks and then running the request to obtain a map of task name
-to result.
+    my $user = $typepad->users->get_user(user_id => '6p1234123412341234');
+    my $user_memberships = $typepad->users->get_user_memberships(user => $user);
 
 =head1 METHODS
 
@@ -143,6 +133,43 @@ sub oauth_parameters {
         consumer_key => $self->consumer_key,
         consumer_secret => $self->consumer_secret,
     );
+}
+
+=pod
+
+=head2 Noun Accessors
+
+Each noun in the TypePad API is represented in this library as a class.
+An instance of a noun class can be obtained by calling the method
+named after it on the typepad instance.
+
+For example, to get the "users" noun, call C<< $typepad->users >>.
+Dashes in the names are replaced with underscores to create valid Perl
+method names.
+
+A full list of nouns known to this version of the library is in
+L<WebService::TypePad::Noun|WebService::TypePad::Noun>.
+
+=cut
+
+# Generate an accessor for each of the known nouns.
+{
+
+    foreach my $noun_accessor (keys %WebService::TypePad::Noun::Nouns) {
+        my $class_name = $WebService::TypePad::Noun::Nouns{$noun_accessor};
+        my $full_accessor_name = __PACKAGE__."::".$noun_accessor;
+
+        my $accessor_func = sub {
+            eval "use $class_name;";
+            return $class_name->_new_for_client($_[0]);
+        };
+
+        {
+            no strict 'refs';
+            *{$full_accessor_name} = $accessor_func;
+        }
+    }
+
 }
 
 1;
