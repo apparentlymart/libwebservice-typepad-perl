@@ -1,5 +1,5 @@
 
-use Test::More tests => 1;
+use Test::More tests => 14;
 use WebService::TypePad::Util::Coerce;
 use WebService::TypePad::Util::JSON;
 use WebService::TypePad::Object::User;
