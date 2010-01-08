@@ -1,6 +1,22 @@
 {
    "entries" : [
       {
+         "name" : "ApiKey",
+         "parentType" : "Base",
+         "properties" : [
+            {
+               "docString" : "The actual API key string, which is used as the consumer key when making an OAuth request.",
+               "name" : "apiKey",
+               "type" : "string"
+            },
+            {
+               "docString" : "The application that owns this API key.",
+               "name" : "owner",
+               "type" : "Application"
+            }
+         ]
+      },
+      {
          "name" : "Application",
          "parentType" : "Entity",
          "properties" : [
@@ -139,11 +155,6 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
-            },
-            {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
             }
          ]
       },
@@ -153,7 +164,7 @@
          "properties" : [
             {
                "docString" : "A URI that serves as a globally-unique id for the asset. This matches the \"id\" property in the corresponding O<Asset> object.",
-               "name" : "ref",
+               "name" : "id",
                "type" : "string"
             },
             {
@@ -282,11 +293,6 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
-            },
-            {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
             }
          ]
       },
@@ -303,6 +309,22 @@
                "docString" : "The duration of the audio stream in seconds.",
                "name" : "duration",
                "type" : "integer"
+            }
+         ]
+      },
+      {
+         "name" : "AuthToken",
+         "parentType" : "Base",
+         "properties" : [
+            {
+               "docString" : "The actual auth token string, which is used as the access token when making an OAuth request.",
+               "name" : "authToken",
+               "type" : "string"
+            },
+            {
+               "docString" : "The root object to which this auth token grants access. Currently this can be either a O<User>, meaning that the token grants access to the user account as a whole, a O<Group> meaning that the token grants access to the group and its content, or a O<Blog> meaning that the token grants access to the blog and its content. Other types may be supported here in future.",
+               "name" : "targetObject",
+               "type" : "Base"
             }
          ]
       },
@@ -429,11 +451,22 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
+            }
+         ]
+      },
+      {
+         "name" : "CommentTreeItem",
+         "parentType" : "Base",
+         "properties" : [
+            {
+               "docString" : "A comment asset in the tree",
+               "name" : "comment",
+               "type" : "Asset"
             },
             {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
+               "docString" : "How many levels deep this comment is in the comment hierarchy. If a given comment has a depth of 1 then all of the direct replies to that comment will have a depth of 2, and their replies will have depth 3, etc. 1 indicates a direct reply to the root asset.",
+               "name" : "depth",
+               "type" : "integer"
             }
          ]
       },
@@ -777,22 +810,6 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
-            },
-            {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
-            }
-         ]
-      },
-      {
-         "name" : "MobileProfile",
-         "parentType" : "Base",
-         "properties" : [
-            {
-               "docString" : "A private email address for posting via email",
-               "name" : "emailAddress",
-               "type" : "string"
             }
          ]
       },
@@ -916,11 +933,6 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
-            },
-            {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
             }
          ]
       },
@@ -1002,11 +1014,6 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
-            },
-            {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
             }
          ]
       },
@@ -1088,11 +1095,33 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
+            }
+         ]
+      },
+      {
+         "name" : "PostByEmailAddress",
+         "parentType" : "Base",
+         "properties" : [
+            {
+               "docString" : "A private email address for posting via email",
+               "name" : "emailAddress",
+               "type" : "string"
+            }
+         ]
+      },
+      {
+         "name" : "PublicationStatus",
+         "parentType" : "Base",
+         "properties" : [
+            {
+               "docString" : "Represents an asset's publication date (past or future)",
+               "name" : "publicationDate",
+               "type" : "string"
             },
             {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
+               "docString" : "C<true> if this asset is private, C<false> otherwise",
+               "name" : "draft",
+               "type" : "boolean"
             }
          ]
       },
@@ -1167,11 +1196,6 @@
             {
                "docString" : "An array of object type identifier URIs. At the present time, only one object type is returned per asset, but this may be extended in future. Clients should scan this list and ignore any types that are not recognised. This list also includes appropriate type URIs as defined by the ActivityStrea.ms schema specification.",
                "name" : "objectTypes",
-               "type" : "set<string>"
-            },
-            {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this user.",
-               "name" : "allowedMethods",
                "type" : "set<string>"
             },
             {
@@ -1325,11 +1349,6 @@
                "docString" : "The number of comments that have been posted in the comment tree beneath this asset.",
                "name" : "commentCount",
                "type" : "integer"
-            },
-            {
-               "docString" : "Set of strings containing the HTTP methods that the currently-authenticated client is allowed to apply to this asset.",
-               "name" : "allowedMethods",
-               "type" : "set<string>"
             }
          ]
       },
@@ -1345,5 +1364,5 @@
          ]
       }
    ],
-   "totalResults" : 29
+   "totalResults" : 33
 }

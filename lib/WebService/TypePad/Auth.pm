@@ -24,6 +24,8 @@ use LWP::UserAgent;
 use HTTP::Request;
 use Net::OAuth;
 
+$Net::OAuth::PROTOCOL_VERSION = Net::OAuth::PROTOCOL_VERSION_1_0A;
+
 =head1 METHODS
 
 =cut
@@ -71,19 +73,23 @@ sub new {
 sub request_token {
     my ($self, %opts) = @_;
 
+    my $callback_url = delete $opts{callback_url} or croak "callback_url is required";
+    croak "Unsupported argument(s): ".join(', ', keys %opts) if %opts;
+
     # First we ask the server what endpoints we should be using.
     my $application = $self->_application_object;
 
-    my $request_token_link = $application->get_link_with_relationship('oauth-request-token-endpoint');
+    my $request_token_url = $application->oauth_request_token_url;
 
     my $request = Net::OAuth->request("request token")->new(
         consumer_key => $self->{consumer_key},
         consumer_secret => $self->{consumer_secret},
-        request_url => $request_token_link->href,
+        request_url => $request_token_url,
         request_method => 'POST',
         signature_method => 'HMAC-SHA1',
         timestamp => time(),
         nonce => $self->_nonce(),
+        callback => $callback_url,
     );
 
     $request->sign();
@@ -91,7 +97,7 @@ sub request_token {
     my $ua = LWP::UserAgent->new();
     $ua->agent('WebService::TypePad/'.$WebService::TypePad::VERSION);
 
-    my $req = HTTP::Request->new(POST => $request_token_link->href);
+    my $req = HTTP::Request->new(POST => $request_token_url);
     $req->content_type("application/x-www-form-urlencoded");
     $req->content($request->to_post_body());
 
@@ -112,17 +118,22 @@ sub authorization_url {
 
     my $request_token = delete $opts{request_token} or die "request_token is required";
     my $request_token_secret = delete $opts{request_token_secret} or die "request_token_secret is required";
-    my $callback_url = delete $opts{callback_url};
+    my $target_object = delete $opts{target_object};
     croak "Unsupported argument(s): ".join(', ', keys %opts) if %opts;
 
+    if (UNIVERSAL::isa($target_object, "WebService::TypePad::Object")) {
+        # Substitute the object's id
+        $target_object = $target_object->id;
+    }
+
     my $application = $self->_application_object;
-    my $authorization_link = $application->get_link_with_relationship('oauth-authorization-page');
+    my $authorization_url = $application->oauth_authorization_url;
 
     my $auth_request = Net::OAuth->request('user authentication')->new(
         token => $request_token,
-        callback => $callback_url,
+        ($target_object ? ( extra_params => { target_object => $target_object } ) : ()),
     );
-    return $auth_request->to_url($authorization_link->href);
+    return $auth_request->to_url($authorization_url);
 
 }
 
@@ -131,20 +142,22 @@ sub access_token {
 
     my $request_token = delete $opts{request_token} or die "request_token is required";
     my $request_token_secret = delete $opts{request_token_secret} or die "request_token_secret is required";
+    my $verifier = delete $opts{verifier} or die "verifier is required";
     croak "Unsupported argument(s): ".join(', ', keys %opts) if %opts;
 
     my $application = $self->_application_object;
-    my $access_token_link = $application->get_link_with_relationship('oauth-access-token-endpoint');
+    my $access_token_url = $application->oauth_access_token_url;
 
     my $request = Net::OAuth->request("access token")->new(
         consumer_key => $self->{consumer_key},
         consumer_secret => $self->{consumer_secret},
         token => $request_token,
         token_secret => $request_token_secret,
-        request_url => $access_token_link->href,
+        request_url => $access_token_url,
         request_method => 'POST',
         signature_method => 'HMAC-SHA1',
         timestamp => time(),
+        verifier => $verifier,
         nonce => $self->_nonce(),
     );
 
@@ -153,7 +166,7 @@ sub access_token {
     my $ua = LWP::UserAgent->new();
     $ua->agent('WebService::TypePad/'.$WebService::TypePad::VERSION);
 
-    my $req = HTTP::Request->new(POST => $access_token_link->href);
+    my $req = HTTP::Request->new(POST => $access_token_url);
     $req->content_type("application/x-www-form-urlencoded");
     $req->content($request->to_post_body());
 
@@ -182,12 +195,9 @@ sub _application_object {
     my ($self) = @_;
 
     my $typepad = $self->_api_client;
-    my $app = $typepad->application($self->{consumer_key});
-    my $req = $typepad->new_request();
-    $req->add_task('app' => $app->load_task());
-    my $result = $req->run();
+    my $api_key_obj = $typepad->api_keys->get_api_key(api_key => $self->{consumer_key});
 
-    return $result->{app};
+    return $api_key_obj->owner;
 }
 
 sub _nonce {
