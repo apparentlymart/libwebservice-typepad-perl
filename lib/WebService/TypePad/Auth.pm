@@ -118,20 +118,15 @@ sub authorization_url {
 
     my $request_token = delete $opts{request_token} or die "request_token is required";
     my $request_token_secret = delete $opts{request_token_secret} or die "request_token_secret is required";
-    my $target_object = delete $opts{target_object};
+    my $access = delete $opts{access};
     croak "Unsupported argument(s): ".join(', ', keys %opts) if %opts;
-
-    if (UNIVERSAL::isa($target_object, "WebService::TypePad::Object")) {
-        # Substitute the object's id
-        $target_object = $target_object->id;
-    }
 
     my $application = $self->_application_object;
     my $authorization_url = $application->oauth_authorization_url;
 
     my $auth_request = Net::OAuth->request('user authentication')->new(
         token => $request_token,
-        ($target_object ? ( extra_params => { target_object => $target_object } ) : ()),
+        ($access ? ( extra_params => { access => $access } ) : ()),
     );
     return $auth_request->to_url($authorization_url);
 
