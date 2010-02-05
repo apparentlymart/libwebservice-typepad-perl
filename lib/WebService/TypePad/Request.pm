@@ -77,6 +77,7 @@ sub run {
         my $task = $self->{tasks}{$key};
 
         my $req = $self->_task_to_http_request($task);
+        $req->header('Cookie' => 'micro_pool_id=1');
         $self->_add_auth_to_request($req);
         my $res = $ua->request($req);
 
@@ -207,6 +208,7 @@ sub _add_auth_to_request {
     $request->sign();
 
     print STDERR "OAuth request is ".Data::Dumper::Dumper($request);
+    print STDERR "Base string is ".$request->signature_base_string;
 
     my $auth_header = $request->to_authorization_header();
 
